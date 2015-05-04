@@ -21,7 +21,8 @@
 	//var parseDate = d3.time.format("%Y-%m-%d %H:%M:%S").parse;
 
     	$(document).ready(function(){		
-
+    		//localhost:8181/serve/
+    		//./static/sample.json
     		d3.json("./static/sample.json", function(error, data){
     			if(error){
     				//Erorr occured
@@ -29,14 +30,17 @@
     			}
     			else{
     				_.each(data, function(element, index, list){
+    					//Gather all companies in the dataset
     					symbols.push(element.entities[0].ticker);
     				})
 
     				data1=data;
     			}
 
+    			//Gather unique companies in the dataset
 			symbols = _.uniq(symbols);
 
+			//Setting up autocomplete
 			$('#txtSearch').typeahead({
 			name: 'States',
 			minLength: 1,
@@ -44,21 +48,20 @@
 			local: symbols
 			});
 
-			//alert('ready !!!');
-
 			$("#lblReady").text('Ready !!!');
 
 			$("#txtSearch").focus();
-
     		})
 
     		var events=[];
 
     		$('#btnSubmit').click(function(){
 
+    			//Get selected ticker
     			srch = $('#txtSearch').val();
     			console.log("Clicked " + srch);
 
+    			//Collect all events in an array
     			events=[];
 
     			_.each(data1, function(element1, index, list){
@@ -74,25 +77,15 @@
     			//All Unique events
     			events = _.uniq(events);
     			$("#pnlEvents").empty();
+
+    			//Populate events to select from
     			makeAList(events);
     		});
     	});
 	//---------------------------Document.Ready----------------------------
 
 	function makeAList(eventsList){
-		/*d3.select("#pnlEvents")
-			.append("ul")
-			.selectAll("li")
-			.data(eventsList)
-			.enter()
-			.append("li")
-			.append("a")
-			.attr("class", "eventList")
-			.text(function(d){
-				return d;
-			});*/
-		
-
+		//Populate events
 		d3.select("#pnlEvents")
 			.attr("class", "list-group")
 			.selectAll("a")
@@ -104,13 +97,14 @@
 				return d;
 			});
 
+		//On event selection, collect and show data
 		$("#pnlEvents a").click(function(){
 
 			var selectedEvent = $(this).text();
 
 			var dataMap=[];
 
-
+			//Collect ticker + event related data
     			_.each(data1, function(element1, index, list){
     				//console.log("element: " + element + " index: " + index);
     				//console.log(new Date(element.harvested_at.$date));
@@ -119,18 +113,9 @@
     				 _.each(element1.entities, function(element, index, list){
 
     				 	if(element.ticker == srch){
-    				 		//console.log(element);
     				 		_.each(element1.event_source_rank, function(element0, index, list){
 			 				//Event Dates
     				 			if(element0.event == selectedEvent){
-    				 				/*console.log(new Date(element1.harvested_at.$date));
-    				 				console.log(new Date(element1.harvested_at.$date).getUTCDate());
-    				 				console.log(new Date(element1.harvested_at.$date).getDay());
-    				 				console.log(new Date(element1.harvested_at.$date).getUTCFullYear());*/
-    				 				//console.log();
-
-    				 				//console.log(parseDate(new Date(element1.harvested_at.$date)));
-
     				 				dataMap.push({date: new Date(element1.harvested_at.$date)
     				 						, sourceRank: element0.source_rank
     				 						, sourceId: element1.source_id
@@ -143,6 +128,7 @@
 
 			console.log(dataMap);
 
+			//After data is finalised, visualize!
 			drawScatter(dataMap);
 
 		});
@@ -158,11 +144,8 @@
 
 	function drawScatter(dataMap){
 		console.log("Now plotting");
-
 		$("#pnlPlot").empty();
 
-		console.log(d3.max(dataMap, function(d){ return dater(d.date); }));
-	         	
 	         	var scatterPadding = 80;
 		var w = 800;
 		var h = 500;
@@ -172,11 +155,6 @@
 				.attr("class", "box")
 				.attr("height", h)
 				.attr("width", w);
-
-		/*xScale = d3.time.scale.utc()
-				.domain([d3.min(dataMap, function(d){ return d.date.getHours() - 1; })
-					, d3.max(dataMap, function(d){ return d.date.getHours(); })])
-				.range([scatterPadding, w - scatterPadding * 3]);*/
 
 		xScale = d3.scale.linear()
 				.domain([d3.min(dataMap, function(d){ return d.date.getHours(); })
@@ -190,26 +168,36 @@
 
 		var rScale = d3.scale.linear()
 					.domain([d3.min(dataMap, function(d){ return d.sourceRank; }), d3.max(dataMap, function(d){ return d.sourceRank; })])
-					.range([2, 8]);
+					.range([2, 12]);
 
 		var xAxis = d3.svg.axis()
 				.scale(xScale)
 				.orient("bottom")
-				.ticks(12);
-				/*.tickFormat(d3.time.format('%I:%M'))
-				.ticks(d3.time.minute, 30);*/
-				//.tickSize(5);
-				//.tickPadding(8);
+				.innerTickSize(-(h - scatterPadding * 2))
+			    	.outerTickSize(0)
+				.ticks(12);	
 
+		var xGrid = d3.svg.axis()
+				.scale(xScale)
+				.orient("bottom")
+				.ticks(12)				
+				.tickSize(-(h - scatterPadding), 0, 0)
+				.tickFormat("");
+		
 		var yAxis = d3.svg.axis()
 				.orient("left")
 				.scale(yScale)
+				.innerTickSize(-(w - scatterPadding * 4))
+			    	.outerTickSize(0)
 				.ticks(6)
 				.tickFormat(d3.time.format('%b %d %Y'));
-				/*.ticks(d3.time.days, 1)
-				.tickFormat(d3.time.format('%b %d %Y'))
-				.tickSize(5)
-				.tickPadding(8);*/
+		
+		var yGrid = d3.svg.axis()				
+				.scale(yScale)
+				.orient("left")
+				.ticks(6)
+				.tickSize(-(w - scatterPadding * 3), 0, 0)
+				.tickFormat("");
 
 		var tooltip = d3.select("body")
 				.append("div")
@@ -220,6 +208,26 @@
 				.style("opacity", "0.8")
 				.style("font-weight", "bold")
 				.text("tooltip");
+
+		/*var line = d3.svg.line()
+				    .x(function(d) { return xScale(d.date.getHours()); })
+				    .y(function(d) { return yScale(dater(d.date)); });*/
+
+		/*svg.append("path")
+			.data([dataMap])
+			.attr("class", "line")
+			.attr("d", line);*/
+
+		//Grid Lines
+		/*svg.append("g")         
+		        .attr("class", "grid")
+		        .attr("transform", "translate(0," + h  - scatterPadding + ")")
+		        .call(xGrid);		            
+
+		svg.append("g")         
+			.attr("class", "grid")
+			.attr("transform", "translate(" + scatterPadding + ", 0)")
+			.call(yGrid);*/
 
 		svg.selectAll("circle")
 			.data(dataMap)
@@ -232,9 +240,7 @@
 				, fill: '#500089'
 				, stroke: '#500089'
 			})
-			
-			//.on("mouseout", function(){return tooltip.style("visibility", "hidden");});
-
+		
 		svg.append("g")
 			.attr("class", "axis")
 			.attr("transform", "translate(0, " + (h - scatterPadding) +  ")")
@@ -244,8 +250,6 @@
 			.attr("class", "axis")
 			.attr("transform", "translate(" + scatterPadding + ", 0)")
 			.call(yAxis);
-
-		//console.log(svg);
 
 		d3.selectAll('circle').on('mouseover', function(){
 			//console.log($(this)[0].__data__.articleURL);
@@ -299,6 +303,19 @@
 	    	font-family: sans-serif;
 	    	font-size: 11px;
     	}
+
+    	.axis .tick line{
+	    opacity: 0.2;
+	  }
+
+    	  .grid .tick {
+    	      stroke: black;
+    	      opacity: 0.7;
+    	  }
+    	  .grid path {
+    	        stroke-width: 0;
+    	        shape-rendering: crispEdges;
+    	  }
 
     	/*=====Type Ahead====*/
     	/*********Type ahead**********/
@@ -359,7 +376,7 @@
   	<div class="container-fluid">
 	  	<div class="row">
 	  		<div class="col-md-12">
-	  			<h1 align="center"> GrapeVine v 1.0 </h1>
+	  			<h1 align="center"> GrapeVine </h1>
 	  		</div>
 	  	</div>
 	  	<div class="row">
